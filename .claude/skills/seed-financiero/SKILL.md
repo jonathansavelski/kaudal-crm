@@ -35,8 +35,65 @@ monto = exp(mu + sigma × z)     con z ~ normal(0,1)
 `sigma` alto (0,7 a 0,9) da la cola larga que se busca. Se trunca a un mínimo y un máximo
 razonables para que no salga un abono de $12 ni uno de $900 millones.
 
-Verificación: el cliente más grande tiene que estar entre 8 y 15 veces la mediana. Si la
-razón es 2, la distribución quedó plana.
+Verificación de que la cola quedó log-normal y no plana: **`p90 / mediana` de las cuentas
+no-ancla, entre 2,5 y 4,5**.
+
+De dónde sale la banda: para una log-normal pura, `p90/mediana = exp(1,2816 · σ)`. Con
+σ = 0,7 da 2,45; con σ = 0,9 da 3,17. Los multiplicadores de tamaño la ensanchan un poco
+más. Si el valor cae por debajo de 2,5, la cola se aplanó y hay que subir σ o el rango de
+los multiplicadores.
+
+**No se verifica `máximo / mediana` sobre la cartera completa**, y hay una razón dura:
+con cuentas ancla, esa razón queda determinada por el share de las anclas y por la
+cantidad de cuentas, no por la forma de la cola. Su piso matemático es
+
+```
+razon_minima = share_ancla_mayor / ((1 − Σ shares_ancla) / n_cuentas_no_ancla)
+```
+
+Con 3 anclas sumando 67,5% y 56 cuentas en la cola, ese piso es **41,4**, y solo se
+alcanzaría con una cola perfectamente uniforme. Fijar una banda por debajo de ese piso es
+pedir algo imposible, y el intento de cumplirlo **aplana la cola**, que es exactamente el
+defecto que la verificación quería evitar.
+
+En la cartera completa, `máximo / mediana` se **informa** (queda entre 40 y 65 por
+construcción), pero no se usa como criterio de aprobación.
+
+## 2 bis. Cuentas ancla
+
+La log-normal sola no alcanza. Con ~60 clientes facturando, produce un HHI de ~400: una
+cartera tan pareja que el KPI de concentración no dice nada y el componente de
+concentración del score de riesgo casi no discrimina.
+
+Por eso, además de la log-normal, se designan **2 o 3 cuentas ancla**: corporativas
+grandes que pesan entre **15% y 25%** de la facturación cada una. Objetivo de HHI de la
+cartera: **1500 a 1800** — la banda "moderada" del skill `metricas-financieras`.
+
+**Por qué:** es lo que le pasa a un SaaS B2B joven de verdad. Se firma un cliente ballena
+que salva el año y que, al mismo tiempo, es el mayor riesgo del negocio. Con cuentas ancla,
+tres cosas cuentan la misma historia y se refuerzan: el KPI de HHI, el componente de
+concentración del score de riesgo y el gráfico de top 10 clientes.
+
+Las cuentas ancla **no** son automáticamente las morosas. Que se solapen o no con las
+empresas problemáticas es una decisión aparte, y es más interesante que solapen **solo en
+parte**: un cliente enorme que además paga mal es el peor escenario de una cartera, y vale
+la pena que exista uno.
+
+**Nota sobre la aritmética — leer antes de tocar cualquier banda de este skill.**
+
+Concentración de cartera y forma de la cola **no son parámetros independientes**, y ya se
+escribieron dos veces bandas imposibles por no verificarlo:
+
+- A 60 clientes, el **HHI mínimo posible** es `10.000 / 60 ≈ 165` (cartera perfectamente
+  pareja). Pedir HHI 1500 sin cuentas ancla no tiene solución: exige que el mayor pese
+  cerca de un tercio del total.
+- Con las anclas puestas, `máximo / mediana` **no puede** bajar de ~41 (ver la fórmula del
+  piso en la sección 2). Cualquier banda por debajo es inalcanzable, y perseguirla aplana
+  la cola.
+
+La regla práctica: **el HHI mide la concentración, `p90/mediana` de las no-ancla mide la
+forma de la cola.** Son las dos verificaciones, y son independientes entre sí. Antes de
+agregar una tercera, calculá su piso y su techo dados los otros dos requisitos.
 
 ## 3. El ticket correlaciona con sector y tamaño
 
@@ -136,13 +193,31 @@ instante. Con estacionalidad se lee como un negocio de verdad.
 
 ## 9. IPC y tipo de cambio
 
-- **36 meses de `ipc_mensual`** con variaciones mensuales realistas para Argentina, con
-  el índice acumulando de forma monótona creciente. La serie tiene que ser **coherente
-  entre sí**: `indice[n] = indice[n-1] × (1 + variacion_mensual[n])`. Si el índice y la
-  variación no cierran, todo el cálculo de valor real queda mal.
-- **90 días de `tipo_cambio`** para las cuatro casas, con el MEP por encima del oficial y
-  el CCL por encima del MEP, moviéndose con volatilidad diaria pero sin saltos absurdos.
-  La brecha oficial/MEP se mantiene en un rango plausible.
+**Estas dos tablas no se generan con faker: se siembran con datos reales.** Es la única
+excepción a la regla de que todo es ficticio, y es deliberada — lo ficticio es la
+actividad comercial de Nodus, no el contexto macro en el que ocurre.
+
+Las series las baja `scripts/bajar-macro.ts` de los mismos APIs que consume la app, y las
+**congela** en `scripts/datos-macro.json`, versionado. El seed lee de ese archivo, nunca
+de la red: tiene que ser determinista y funcionar sin internet.
+
+- **36 meses de `ipc_mensual`**, del índice del INDEC. La serie tiene que cerrar:
+  `indice[n] = indice[n-1] × (1 + variacion_mensual[n])`, con `variacion_mensual` como
+  **fracción** (`0,127`), no como porcentaje. Si el índice y la variación no cierran, todo
+  el cálculo de valor real queda mal.
+- **~1.080 días de `tipo_cambio`**, seis casas (`oficial`, `mep`, `ccl`, `blue`, `tarjeta`,
+  `mayorista`). Mapeo desde el API: `bolsa` → `mep`, `contadoconliqui` → `ccl`.
+
+  Son 36 meses y no los 90 días de la consigna original, a propósito: una factura en USD
+  de marzo 2024 se normaliza con el MEP de marzo 2024. Con 90 días, toda conversión
+  histórica usaría la cotización de hoy y el valor real saldría mal en cada fila.
+
+  Los días sin cotización (fines de semana, feriados) se resuelven tomando la **última
+  disponible hacia atrás**.
+
+**Por qué vale la pena:** en la ventana que cubre el seed, la inflación acumulada es 490%
+y el MEP subió 127%. Ese desacople hace que nominal, real y USD MEP cuenten tres historias
+distintas, que es exactamente la tesis de Kaudal. Ninguna serie inventada da eso.
 
 Estas dos tablas son las que alimentan todas las conversiones a valor real y a USD MEP.
 Un error acá contamina cada cifra de la app.
@@ -193,7 +268,11 @@ El script imprime al terminar, y el agente `qa-datos` lo audita:
 - [ ] Suma de cobros por factura <= monto de la factura, siempre.
 - [ ] Ninguna factura con `monto_centavos <= 0`.
 - [ ] % de vencidas y de incobrables dentro de lo esperado (15% / 4%, ±3 puntos).
-- [ ] HHI de la cartera generada en un rango que dé algo interesante que mostrar
-      (idealmente 1200-2200: ni monopolio ni perfectamente plana).
-- [ ] Razón entre el cliente más grande y la mediana entre 8 y 15.
+- [ ] HHI de la cartera generada entre **1500 y 1800** (banda "moderada"), sostenido por
+      las 2-3 cuentas ancla.
+- [ ] Las cuentas ancla pesan entre 15% y 25% de la facturación cada una.
+- [ ] `p90 / mediana` de las cuentas **no ancla**, entre 2,5 y 4,5 (la cola siguió
+      siendo log-normal y no se aplanó).
+- [ ] `máximo / mediana` de la cartera completa: se **informa**, no se aprueba. Con 3
+      anclas queda entre 40 y 65 por construcción.
 - [ ] La serie de `ipc_mensual` cierra: índice y variación consistentes mes a mes.

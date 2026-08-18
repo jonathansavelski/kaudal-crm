@@ -89,8 +89,11 @@ No es integridad, pero un dato íntegro y absurdo igual rompe la demo:
 - [ ] % de facturas vencidas ~15% (±3 puntos) e incobrables ~4% (±3).
 - [ ] Mora **concentrada** en pocos clientes, no repartida pareja. Se verifica: los 10
       peores concentran la mayoría del saldo vencido.
-- [ ] HHI de la cartera en 1200-2200 — hay algo interesante que mostrar.
-- [ ] Razón entre el cliente más grande y la mediana, entre 8 y 15 (la log-normal quedó).
+- [ ] HHI de la cartera en 1500-1800 (banda "moderada"), sostenido por las cuentas ancla.
+- [ ] Las 2-3 cuentas ancla pesan entre 15% y 25% de la facturación cada una.
+- [ ] `p90 / mediana` de las cuentas **no ancla**, entre 2,5 y 4,5 (la log-normal quedó).
+- [ ] `máximo / mediana` de la cartera completa: se informa, no se aprueba — con anclas
+      queda entre 40 y 65 por construcción, no es un defecto.
 - [ ] Estacionalidad visible: enero y la segunda quincena de julio por debajo.
 - [ ] El churn cae sobre clientes con historial de mora, no sorteado.
 - [ ] Cero valores nulos en campos que la UI muestra sin fallback.
