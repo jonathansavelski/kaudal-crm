@@ -1,0 +1,6 @@
+# Normaliza a LF en el repo. Netlify buildea en Linux; el checkout local
+# igual respeta el fin de linea nativo de Windows.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
