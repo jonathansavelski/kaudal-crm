@@ -5,6 +5,7 @@ import { RutaProtegida } from '@/components/auth/RutaProtegida'
 import { LayoutPrincipal } from '@/components/layout/LayoutPrincipal'
 import Acciones from '@/pages/Acciones'
 import Cobranzas from '@/pages/Cobranzas'
+import CuentaDetalle from '@/pages/CuentaDetalle'
 import Cuentas from '@/pages/Cuentas'
 import Dashboard from '@/pages/Dashboard'
 import Login from '@/pages/Login'
@@ -43,6 +44,7 @@ export default function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="pipeline" element={<Pipeline />} />
                 <Route path="cuentas" element={<Cuentas />} />
+                <Route path="cuentas/:id" element={<CuentaDetalle />} />
                 <Route path="cobranzas" element={<Cobranzas />} />
                 <Route path="acciones" element={<Acciones />} />
                 <Route path="mercado" element={<Mercado />} />

@@ -56,8 +56,9 @@ src/
     charts/       wrappers de Recharts
   pages/          una por ruta
   lib/
-    metricas/     cálculos financieros puros + sus tests
-    api/          clientes del API externo
+    metricas/     las 17 fórmulas financieras, puras + sus tests
+    agregados/    agrupa y normaliza para las pantallas; delega en metricas/
+    api/          clientes de los APIs externos y de Supabase
     supabase.ts   cliente tipado
     formato.ts    formateadores es-AR centralizados
   hooks/
@@ -103,6 +104,8 @@ Estas cuatro se aplican siempre, sin excepción. El detalle está en cada rule.
 2. **Ninguna cifra ambigua.** Todo importe en pantalla dice si es nominal, real o USD MEP.
 3. **Una sola fórmula por métrica.** La del skill `metricas-financieras`. Si una pantalla
    necesita calcular distinto, se corrige el skill, no se bifurca el cálculo.
+   `src/lib/agregados/` agrupa, filtra y normaliza para las pantallas, pero **no define
+   ninguna fórmula**: siempre delega en `src/lib/metricas/`.
 4. **RLS en todas las tablas.** La `service_role key` no entra al front ni al repo.
 
 ## Contexto de negocio

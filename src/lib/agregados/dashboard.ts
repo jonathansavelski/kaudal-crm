@@ -9,6 +9,7 @@
 import type {
   FilaAccion,
   FilaCampania,
+  FilaContacto,
   FilaContrato,
   FilaCobro,
   FilaEmpresa,
@@ -51,6 +52,7 @@ export type FilasCrudas = {
   facturas: readonly FilaFactura[]
   cobros: readonly FilaCobro[]
   empresas: readonly FilaEmpresa[]
+  contactos: readonly FilaContacto[]
   contratos: readonly FilaContrato[]
   oportunidades: readonly FilaOportunidad[]
   acciones: readonly FilaAccion[]

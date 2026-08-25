@@ -37,7 +37,7 @@ async function traerTodo<T>(
 // ---------------------------------------------------------------------------
 
 const COLUMNAS_FACTURA =
-  'factura_id, empresa_id, fecha_emision, fecha_vencimiento, monto_centavos, moneda, estado_vigente, saldo_centavos, dias_mora, dias_mora_al_cobro'
+  'factura_id, empresa_id, contrato_id, oportunidad_id, numero, fecha_emision, fecha_vencimiento, monto_centavos, moneda, estado_vigente, cobrado_centavos, saldo_centavos, cantidad_cobros, fecha_ultimo_cobro, dias_mora, dias_mora_al_cobro'
 
 /**
  * `facturas.estado` es una foto del seed y se desfasa con los dias; `estado_vigente` de
@@ -80,7 +80,9 @@ export async function traerEmpresas() {
     (desde, hasta) =>
       supabase
         .from('empresas')
-        .select('id, razon_social, sector, tamanio, estado_comercial, fecha_alta, provincia')
+        .select(
+          'id, razon_social, cuit, sector, tamanio, estado_comercial, moneda_contrato, fecha_alta, owner_comercial, ciudad, provincia',
+        )
         .order('razon_social', { ascending: true })
         .range(desde, hasta),
     'las empresas',
@@ -94,7 +96,9 @@ export async function traerContratos() {
     (desde, hasta) =>
       supabase
         .from('contratos')
-        .select('id, empresa_id, abono_mensual_centavos, moneda, estado, fecha_inicio, fecha_fin')
+        .select(
+          'id, empresa_id, abono_mensual_centavos, moneda, estado, fecha_inicio, fecha_fin, motivo_baja',
+        )
         .order('fecha_inicio', { ascending: true })
         .range(desde, hasta),
     'los contratos',
@@ -124,7 +128,9 @@ export async function traerAcciones() {
     (desde, hasta) =>
       supabase
         .from('acciones_comerciales')
-        .select('id, empresa_id, campania_id, oportunidad_id, fecha, costo_centavos, moneda')
+        .select(
+          'id, empresa_id, contacto_id, campania_id, oportunidad_id, tipo, fecha, costo_centavos, moneda, resultado, notas',
+        )
         .order('fecha', { ascending: true })
         .range(desde, hasta),
     'las acciones comerciales',
@@ -146,6 +152,20 @@ export async function traerCampanias() {
 }
 
 export type FilaCampania = Awaited<ReturnType<typeof traerCampanias>>[number]
+
+export async function traerContactos() {
+  return traerTodo(
+    (desde, hasta) =>
+      supabase
+        .from('contactos')
+        .select('id, empresa_id, nombre, apellido, cargo, email, telefono, es_decisor')
+        .order('apellido', { ascending: true })
+        .range(desde, hasta),
+    'los contactos',
+  )
+}
+
+export type FilaContacto = Awaited<ReturnType<typeof traerContactos>>[number]
 
 // ---------------------------------------------------------------------------
 // Macro

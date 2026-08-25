@@ -14,6 +14,7 @@ import {
   traerAcciones,
   traerCampanias,
   traerCobros,
+  traerContactos,
   traerContratos,
   traerEmpresas,
   traerFacturas,
@@ -27,11 +28,23 @@ import { armarDashboard } from '@/lib/agregados/dashboard'
 export const CLAVE_DATOS_CRM = ['datos-crm'] as const
 
 async function traerFilas(): Promise<FilasCrudas> {
-  const [facturas, cobros, empresas, contratos, oportunidades, acciones, campanias, ipc, mep] =
+  const [
+    facturas,
+    cobros,
+    empresas,
+    contactos,
+    contratos,
+    oportunidades,
+    acciones,
+    campanias,
+    ipc,
+    mep,
+  ] =
     await Promise.all([
       traerFacturas(),
       traerCobros(),
       traerEmpresas(),
+      traerContactos(),
       traerContratos(),
       traerOportunidades(),
       traerAcciones(),
@@ -40,7 +53,18 @@ async function traerFilas(): Promise<FilasCrudas> {
       traerMepHistorico(),
     ])
 
-  return { facturas, cobros, empresas, contratos, oportunidades, acciones, campanias, ipc, mep }
+  return {
+    facturas,
+    cobros,
+    empresas,
+    contactos,
+    contratos,
+    oportunidades,
+    acciones,
+    campanias,
+    ipc,
+    mep,
+  }
 }
 
 /** Las filas crudas, compartidas entre pantallas por la cache de TanStack Query. */

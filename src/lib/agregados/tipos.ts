@@ -12,6 +12,8 @@ import type { BucketAging, Canal, Etapa, EstadoFactura, Moneda } from '@/lib/met
 /** Factura de `v_saldo_facturas` ya saneada y normalizada a ARS. */
 export type FacturaSaneada = {
   id: string
+  /** Numero de factura visible: es lo que el usuario busca, no el uuid. */
+  numero: string
   empresaId: string
   fechaEmision: string
   fechaVencimiento: string
@@ -28,6 +30,9 @@ export type FacturaSaneada = {
   esUsd: boolean
   montoOriginalCentavos: number
   saldoOriginalCentavos: number
+  cobradoOriginalCentavos: number
+  cantidadCobros: number
+  fechaUltimoCobro: string | null
 }
 
 export type PuntoSerieMensual = {
