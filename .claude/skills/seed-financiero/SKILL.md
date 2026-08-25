@@ -215,6 +215,18 @@ de la red: tiene que ser determinista y funcionar sin internet.
   Los días sin cotización (fines de semana, feriados) se resuelven tomando la **última
   disponible hacia atrás**.
 
+  **No asumir `ccl > mep > oficial`.** Parece obvio y es falso: sobre la serie real, el
+  MEP quedó por debajo del oficial en 139 días y el CCL por debajo del MEP en 162 — más
+  de un 12% de la ventana. Ningún test, ninguna validación y ninguna pantalla puede
+  apoyarse en ese orden. Si un gráfico necesita un orden estable de las series, se fija
+  por configuración, no por el valor.
+
+  La serie tiene además un punto sospechoso: el **2025-05-02 el MEP salta +15,29% y al
+  día siguiente vuelve −12,44%**. Un salto y su reversión completa en 24 h es casi
+  seguro una captura mala del API. Queda como está —los datos son reales y congelados—
+  pero las facturas en USD emitidas ese día quedan normalizadas ~14% por encima de sus
+  vecinas.
+
 **Por qué vale la pena:** en la ventana que cubre el seed, la inflación acumulada es 490%
 y el MEP subió 127%. Ese desacople hace que nominal, real y USD MEP cuenten tres historias
 distintas, que es exactamente la tesis de Kaudal. Ninguna serie inventada da eso.

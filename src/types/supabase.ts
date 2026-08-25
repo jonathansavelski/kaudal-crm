@@ -487,6 +487,7 @@ export type Database = {
           dias_mora: number | null
           dias_mora_al_cobro: number | null
           esta_vencida: boolean | null
+          estado_vigente: Database['public']['Enums']['estado_factura'] | null
         }
         Relationships: []
       }
