@@ -40,8 +40,12 @@ type Acumulado = {
 /**
  * Mora efectiva de una factura: los dias con los que se cobro si ya se cobro, o los dias
  * que lleva vencida si sigue abierta. Una factura al dia aporta cero, no se descarta.
+ *
+ * Se exporta porque la ficha de cuenta y la tabla maestra de `/cuentas` miden la misma
+ * mora: si cada una la definiera a su manera, el score del ranking y el de la ficha
+ * dirian cosas distintas del mismo cliente.
  */
-function moraDeFactura(factura: FacturaSaneada): number {
+export function moraDeFactura(factura: FacturaSaneada): number {
   if (factura.estadoVigente === 'pagada') return Math.max(0, factura.diasMoraAlCobro ?? 0)
   return Math.max(0, factura.diasMora)
 }

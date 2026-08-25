@@ -27,6 +27,7 @@ const CONTRATOS: FilaContrato[] = [
     estado: 'activo',
     fecha_inicio: '2025-01-01',
     fecha_fin: null,
+    motivo_baja: null,
   },
   {
     id: 'c2',
@@ -36,6 +37,7 @@ const CONTRATOS: FilaContrato[] = [
     estado: 'cancelado',
     fecha_inicio: '2025-01-01',
     fecha_fin: '2026-03-15',
+    motivo_baja: 'impago',
   },
 ]
 
@@ -84,11 +86,15 @@ function accion(parcial: Partial<FilaAccion> = {}): FilaAccion {
   return {
     id: 'a1',
     empresa_id: 'e1',
+    contacto_id: null,
     campania_id: null,
     oportunidad_id: null,
+    tipo: 'email',
     fecha: '2025-02-01',
     costo_centavos: 100_000,
     moneda: 'ARS',
+    resultado: 'neutro',
+    notas: null,
     ...parcial,
   }
 }

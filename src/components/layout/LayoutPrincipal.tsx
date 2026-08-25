@@ -17,7 +17,14 @@ export function LayoutPrincipal() {
       <div className="flex min-w-0 flex-1 flex-col">
         <BarraSuperior />
 
-        <main className="flex-1 px-4 py-6 lg:px-6 lg:py-8">
+        {/*
+          overflow-x-clip: la pagina nunca scrollea horizontal (rule ui.md §7). Las
+          tablas anchas ya scrollean dentro de su propio contenedor; sin esta guarda
+          el desborde se escapa igual al nivel del documento y termina empujando la
+          pagina en tablet. Se usa clip y no hidden para no crear un contexto de
+          scroll que rompa el `position: sticky` de los encabezados de tabla.
+        */}
+        <main className="min-w-0 flex-1 overflow-x-clip px-4 py-6 lg:px-6 lg:py-8">
           <div className="mx-auto w-full max-w-[1600px]">
             <Outlet />
           </div>

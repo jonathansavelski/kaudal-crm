@@ -69,6 +69,7 @@ export function sanearFacturas(filas: readonly FilaFactura[], contexto: Contexto
 
     facturas.push({
       id,
+      numero: fila.numero ?? id.slice(0, 8),
       empresaId,
       fechaEmision: emision,
       fechaVencimiento: vencimiento,
@@ -82,6 +83,9 @@ export function sanearFacturas(filas: readonly FilaFactura[], contexto: Contexto
       esUsd: moneda === 'USD',
       montoOriginalCentavos: fila.monto_centavos ?? 0,
       saldoOriginalCentavos: fila.saldo_centavos ?? 0,
+      cobradoOriginalCentavos: fila.cobrado_centavos ?? 0,
+      cantidadCobros: fila.cantidad_cobros ?? 0,
+      fechaUltimoCobro: fila.fecha_ultimo_cobro,
     })
   }
 
