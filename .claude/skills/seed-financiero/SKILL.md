@@ -121,10 +121,17 @@ Esta cadena **no se rompe nunca**, en ningún registro:
 alta de empresa
   < creación de oportunidad
     < cierre de oportunidad
-      < emisión de factura
-        < vencimiento de factura
-          <= cobro
+      < emisión de factura  <=  cobro  <=  hoy
+                            \
+                             < vencimiento de factura
 ```
+
+**El cobro cuelga de la emisión, no del vencimiento.** Una versión anterior de este skill
+pedía `vencimiento <= cobro`, y esa cadena es la que produjo el defecto de la sección 6:
+si el cobro no puede ser anterior al vencimiento, **nadie paga anticipado nunca** y el
+DSO se dispara. El piso duro —el que además impone el trigger `fn_validar_cobro` en la
+base— es `emisión <= cobro <= hoy`. Que el cobro caiga antes o después del vencimiento
+es lo que decide el modelo de mora, no la cadena temporal.
 
 Cada fecha se genera **a partir de la anterior**, sumando un intervalo, nunca de forma
 independiente. Generar fechas sueltas y esperar que ordenen es la forma más rápida de
@@ -161,6 +168,30 @@ la mora concentrada aparece el cliente que hay que ir a ver, que es el punto del
 A esas empresas problemáticas se les asigna un `factorMora` alto al crearlas, y ese factor
 gobierna después el retraso de todos sus cobros. La mora es una **propiedad del cliente**,
 no un dado que se tira por factura.
+
+### La mora es una distribución, no un piso
+
+Error cometido en la primera versión del seed, detectado por el agente
+`analista-financiero`: **ningún cobro era anterior al vencimiento**, 0 de 1.167. La mora
+se había modelado como un piso — todos pagan tarde o justo — en vez de como una
+distribución alrededor del vencimiento.
+
+Consecuencia: un **DSO de 150-185 días** conviviendo con "el 91% cobra dentro de los 30
+días de vencido", que es una contradicción. Y un **ECL del 34,7% del saldo**: un SaaS que
+espera perder un tercio de lo que le deben no es creíble en pantalla.
+
+Objetivos, entonces:
+
+| Indicador | Objetivo | Por qué |
+|---|---|---|
+| Cobros **anticipados** (antes del vencimiento) | **10-15%** del total | En una cartera real hay pago anticipado, aunque sea por descuento financiero |
+| Saldo estancado en `+90` + `incobrable` | **por debajo del 25%** del saldo total (venía de 44,6%) | Es el stock viejo que infla el DSO para siempre |
+| **DSO** de la cartera | **45-90 días** | Coherente con plazos de 15 a 60 días y mora de 1 a 30 |
+| **ECL** sobre el saldo | **por debajo del 15%** | Una provisión defendible para un SaaS B2B |
+
+Lo que **no** cambia: el ~15% de facturas vencidas y el ~4% de incobrables siguen siendo
+el objetivo, y siguen concentrados en pocas cuentas. Lo que se corrige es *cuánto saldo*
+arrastran esas facturas viejas y que exista pago anticipado.
 
 ## 7. El churn no es aleatorio
 

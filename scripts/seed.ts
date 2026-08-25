@@ -27,6 +27,15 @@ import { generar } from './lib/generador.ts'
 import type { Dataset } from './lib/generador.ts'
 import { cuitEsValido } from './lib/argentina.ts'
 
+// Las metricas de cobranzas se importan de la capa canonica en vez de
+// reimplementarse: si el aging, el ECL o el DSO cambian, el seed se entera.
+// Una sola formula por metrica (CLAUDE.md, regla transversal 3).
+import { calcularAging, calcularDso } from '@/lib/metricas/cobranzas'
+import { calcularEcl } from '@/lib/metricas/riesgo'
+import { normalizarAArs } from '@/lib/metricas/moneda'
+import { BUCKETS_AGING } from '@/lib/metricas/tipos'
+import type { FacturaConSaldo, Moneda } from '@/lib/metricas/tipos'
+
 const TABLAS = [
   'empresas',
   'contactos',
@@ -62,6 +71,27 @@ const pesos = (centavos: number): string =>
   `$ ${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Math.round(centavos / 100))}`
 
 const porcentaje = (fraccion: number): string => `${(fraccion * 100).toFixed(1)}%`
+
+/**
+ * Normalizacion a ARS con la funcion canonica. Devuelve null cuando no hay MEP,
+ * y aca eso es un error de datos: mejor romper que seguir con un cero silencioso.
+ */
+function aArs(centavos: number, moneda: Moneda, mepVentaCentavos: number): number {
+  const valor = normalizarAArs({ centavos, moneda }, mepVentaCentavos)
+  if (valor === null) throw new Error('Sin cotizacion MEP para normalizar a ARS')
+  return valor
+}
+
+/**
+ * ISO 'YYYY-MM-DD' a Date en medianoche LOCAL.
+ *
+ * Importa: date-fns compara dias de calendario en hora local. Si la fecha se
+ * construyera en UTC, en UTC-3 cada factura caeria un dia antes y el aging se
+ * correria un bucket entero.
+ */
+function fechaLocal(iso: string): Date {
+  return new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
+}
 
 /** Percentil por el metodo del indice mas cercano, sobre la lista ordenada. */
 function percentil(valores: readonly number[], fraccion: number): number {
@@ -164,12 +194,14 @@ function verificar(datos: Dataset): Verificacion[] {
   const cobrosMalOrdenados = datos.cobros.filter((c) => {
     const factura = facturaPorId.get(c.factura_id)
     if (factura === undefined) return true
-    if (c.fecha < factura.fecha_vencimiento) return true
+    // El piso duro es la EMISION, no el vencimiento: un cobro anticipado es
+    // legitimo y la base lo permite (trigger fn_validar_cobro).
+    if (c.fecha < factura.fecha_emision) return true
     if (c.fecha > datos.diagnostico.hoy) return true
     return c.moneda !== factura.moneda
   }).length
   agregar(
-    'vencimiento <= cobro <= hoy, misma moneda',
+    'emision <= cobro <= hoy, misma moneda',
     cobrosMalOrdenados === 0,
     `${cobrosMalOrdenados} cobros fuera de orden`,
   )
@@ -277,6 +309,77 @@ function verificar(datos: Dataset): Verificacion[] {
     'Mora concentrada en pocas cuentas',
     empresasPara80 <= 20,
     `${empresasPara80} empresas explican el 80% del saldo caido`,
+  )
+
+  // --- Cobranzas: anticipos, aging, DSO y ECL --------------------------------
+  const anticipados = datos.cobros.filter((c) => {
+    const factura = facturaPorId.get(c.factura_id)
+    return factura !== undefined && c.fecha < factura.fecha_vencimiento
+  }).length
+  const pctAnticipados = datos.cobros.length === 0 ? 0 : anticipados / datos.cobros.length
+  agregarForma(
+    'Cobros anticipados entre 10% y 15% del total',
+    pctAnticipados >= 0.1 && pctAnticipados <= 0.15,
+    `${porcentaje(pctAnticipados)} (${anticipados} de ${datos.cobros.length})`,
+  )
+
+  const hoy = fechaLocal(datos.diagnostico.hoy)
+  const mep = datos.diagnostico.mepVentaHoyCentavos
+
+  // Saldo normalizado a ARS con el MEP venta de hoy, igual que hace la app.
+  const facturasConSaldo: FacturaConSaldo[] = datos.facturas.map((f) => ({
+    saldoCentavos: aArs(f.monto_centavos - (cobradoPorFactura.get(f.id) ?? 0), f.moneda, mep),
+    fechaVencimiento: fechaLocal(f.fecha_vencimiento),
+    estado: f.estado,
+  }))
+
+  const aging = calcularAging(facturasConSaldo, hoy)
+  const saldoTotal = BUCKETS_AGING.reduce((total, bucket) => total + aging[bucket].saldoCentavos, 0)
+  const saldoEstancado = aging['+90'].saldoCentavos + aging.incobrable.saldoCentavos
+  const pctEstancado = saldoTotal === 0 ? 0 : saldoEstancado / saldoTotal
+  agregarForma(
+    'Saldo en +90 e incobrable por debajo del 25%',
+    pctEstancado < 0.25,
+    `${porcentaje(pctEstancado)} del saldo (${pesos(saldoEstancado)} de ${pesos(saldoTotal)})`,
+  )
+
+  const ecl = calcularEcl(aging)
+  const pctEcl = saldoTotal === 0 ? 0 : ecl / saldoTotal
+  agregarForma(
+    'ECL por debajo del 15% del saldo',
+    pctEcl < 0.15,
+    `${porcentaje(pctEcl)} (${pesos(ecl)})`,
+  )
+
+  // DSO segun el skill metricas-financieras: saldo promedio de CxC sobre las
+  // ventas a credito del periodo, por los dias del periodo. El periodo son los
+  // ultimos 365 dias; el saldo promedio, el de las dos puntas.
+  const inicioPeriodo = new Date(hoy)
+  inicioPeriodo.setFullYear(inicioPeriodo.getFullYear() - 1)
+  const inicioIso = `${inicioPeriodo.getFullYear()}-${String(inicioPeriodo.getMonth() + 1).padStart(2, '0')}-${String(inicioPeriodo.getDate()).padStart(2, '0')}`
+
+  const cobradoHasta = new Map<string, number>()
+  for (const cobro of datos.cobros) {
+    if (cobro.fecha > inicioIso) continue
+    cobradoHasta.set(cobro.factura_id, (cobradoHasta.get(cobro.factura_id) ?? 0) + cobro.monto_centavos)
+  }
+
+  let ventasDelPeriodo = 0
+  let saldoInicial = 0
+  for (const f of datos.facturas) {
+    const enArs = (centavos: number): number => aArs(centavos, f.moneda, mep)
+    if (f.fecha_emision > inicioIso) {
+      ventasDelPeriodo += enArs(f.monto_centavos)
+    } else {
+      saldoInicial += enArs(Math.max(0, f.monto_centavos - (cobradoHasta.get(f.id) ?? 0)))
+    }
+  }
+
+  const dso = calcularDso((saldoInicial + saldoTotal) / 2, ventasDelPeriodo, 365)
+  agregarForma(
+    'DSO de la cartera entre 45 y 90 dias',
+    dso !== null && dso >= 45 && dso <= 90,
+    dso === null ? 'sin ventas en el periodo' : `${dso.toFixed(1)} dias`,
   )
 
   // --- Concentracion de cartera --------------------------------------------
@@ -434,6 +537,40 @@ function informar(datos: Dataset): boolean {
     `  p90/mediana de la cola no ancla         ${(medianaNoAncla === 0 ? 0 : percentil(noAncla, 0.9) / medianaNoAncla).toFixed(2)}` +
       `   (mediana ${pesos(medianaNoAncla)} · p90 ${pesos(percentil(noAncla, 0.9))})`,
   )
+
+  const cobradoPorFacturaInforme = new Map<string, number>()
+  for (const cobro of datos.cobros) {
+    cobradoPorFacturaInforme.set(
+      cobro.factura_id,
+      (cobradoPorFacturaInforme.get(cobro.factura_id) ?? 0) + cobro.monto_centavos,
+    )
+  }
+  const agingInforme = calcularAging(
+    datos.facturas.map((f) => ({
+      saldoCentavos: aArs(
+        f.monto_centavos - (cobradoPorFacturaInforme.get(f.id) ?? 0),
+        f.moneda,
+        datos.diagnostico.mepVentaHoyCentavos,
+      ),
+      fechaVencimiento: fechaLocal(f.fecha_vencimiento),
+      estado: f.estado,
+    })),
+    fechaLocal(datos.diagnostico.hoy),
+  )
+  const saldoTotalInforme = BUCKETS_AGING.reduce(
+    (total, bucket) => total + agingInforme[bucket].saldoCentavos,
+    0,
+  )
+
+  console.log('')
+  console.log('Aging del saldo (normalizado a ARS)')
+  for (const bucket of BUCKETS_AGING) {
+    const fila = agingInforme[bucket]
+    const share = saldoTotalInforme === 0 ? 0 : fila.saldoCentavos / saldoTotalInforme
+    console.log(
+      `  ${bucket.padEnd(12)} ${pesos(fila.saldoCentavos).padStart(18)}  ${porcentaje(share).padStart(6)}  ${String(fila.cantidad).padStart(4)} facturas`,
+    )
+  }
 
   console.log('')
   console.log('Composicion')

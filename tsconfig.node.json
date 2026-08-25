@@ -6,9 +6,14 @@
     "types": ["node"],
     "skipLibCheck": true,
 
-    /* Bundler mode */
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    /* Bundler mode: igual que tsconfig.app.json.
+       scripts/ corre siempre por tsx (esbuild), nunca por node a secas, y
+       necesita importar src/lib/metricas para verificar el seed con las
+       formulas canonicas en vez de reimplementarlas. Con resolucion nodenext,
+       los imports sin extension que usa src/ (@/lib/metricas/tipos) no
+       resuelven desde este proyecto. */
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

@@ -39,7 +39,8 @@ Sobre la base ya cargada:
 La cadena del skill `seed-financiero`, verificada fila por fila:
 
 ```
-alta empresa < creación oportunidad < cierre < emisión factura < vencimiento <= cobro
+alta empresa < creación oportunidad < cierre < emisión factura <= cobro <= hoy
+                                                emisión < vencimiento
 ```
 
 - [ ] Cero oportunidades creadas antes del alta de su empresa.
@@ -47,6 +48,8 @@ alta empresa < creación oportunidad < cierre < emisión factura < vencimiento <
 - [ ] Cero facturas emitidas antes del cierre de su oportunidad.
 - [ ] Cero vencimientos anteriores a la emisión.
 - [ ] Cero cobros anteriores a la emisión de su factura.
+- [ ] **Un cobro anterior al vencimiento NO es un hallazgo**: es pago anticipado y el
+      skill pide que exista (10-15%). El piso duro es `emisión <= cobro <= hoy`.
 - [ ] Cero fechas en el futuro donde no corresponda (una `fecha_cierre_real` posterior a
       hoy no existe).
 - [ ] La serie de `ipc_mensual` cierra: `indice[n] = indice[n-1] × (1 + variacion[n])`,

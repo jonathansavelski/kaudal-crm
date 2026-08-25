@@ -1061,39 +1061,84 @@ function generarConEscalas(escalas: ReadonlyMap<string, number>): Dataset {
     })
   }
 
+  /**
+   * Probabilidad de pago ANTICIPADO, es decir antes del vencimiento.
+   *
+   * Es una propiedad del cliente, igual que la mora: el que paga bien a veces
+   * paga antes, por descuento financiero o simplemente porque tiene la plata.
+   *
+   * Sin esto la mora queda modelada como un piso -- nadie paga antes de la
+   * fecha -- y el DSO de la cartera se dispara aunque casi todo se cobre dentro
+   * del mes. Es el error que encontro el agente analista-financiero: 0 cobros
+   * anticipados sobre 1167 (skill seed-financiero, seccion 6).
+   */
+  const probabilidadDeAnticipo = (factorMora: number): number =>
+    Math.max(0.02, 0.23 - 0.15 * factorMora)
+
   for (const factura of facturasEnCurso) {
     const { perfil } = factura
 
-    // Todavia no vencio: no hay nada que cobrar, y un cobro anterior al
-    // vencimiento romperia la cadena temporal del skill.
+    // --- Pago anticipado. La ventana va del dia siguiente a la emision al dia
+    //     anterior al vencimiento, y nunca pasa de hoy.
+    const limiteAnticipo = minFecha(sumarDias(factura.fecha_vencimiento, -1), HOY)
+    const margenAnticipo = diasEntre(factura.fecha_emision, limiteAnticipo)
+    if (margenAnticipo >= 1 && chance(probabilidadDeAnticipo(perfil.factorMora))) {
+      const fecha = sumarDias(limiteAnticipo, -entero(0, Math.min(margenAnticipo - 1, 12)))
+      nuevoCobro(factura, fecha, factura.monto_centavos)
+      factura.estado = 'pagada'
+      continue
+    }
+
+    // --- Todavia no vencio y no se anticipo: queda pendiente.
     if (factura.fecha_vencimiento >= HOY) {
       factura.estado = 'pendiente'
       continue
     }
 
     const diasVencida = diasEntre(factura.fecha_vencimiento, HOY)
-    // Ventana de gestion de cobranza: con plazos de 15 a 60 dias, una factura
-    // con menos de 70 dias de vencida todavia se esta reclamando y es normal
-    // que no haya entrado. Pasado ese punto, no cobrar ya es mora de verdad.
-    const enCicloNormal = diasVencida <= 70
 
-    // La probabilidad de no cobrar es, sobre todo, una propiedad del cliente.
-    let pSinCobrar = 0.02 + 0.3 * Math.max(0, perfil.factorMora - 0.8)
-    if (enCicloNormal) pSinCobrar += 0.72 // recien vencida: sigue en gestion de cobranza
+    // --- Incobrable. Es una decision propia sobre facturas viejas de clientes
+    //     con historial malo, no el residuo de "no se cobro". Cuando salia como
+    //     residuo, el stock viejo se acumulaba y dejaba el 44,6% del saldo
+    //     estancado en +90, con un ECL del 34,7%.
+    //     A una cuenta grande no se le da de baja la deuda: se renegocia, se
+    //     reclama o se le corta el servicio, pero no se provisiona a perdida.
+    //     Si se las deja caer, sus facturas -- las de un ancla son 50 veces la
+    //     mediana -- se llevan solas el 40% del saldo de la cartera, y el ECL
+    //     de la cartera deja de ser creible.
+    if (
+      diasVencida > 120 &&
+      perfil.factorMora >= 2.2 &&
+      perfil.empresa.tamanio !== 'corporativa' &&
+      chance(0.42)
+    ) {
+      factura.estado = 'incobrable'
+      // A veces entro algo antes de darla por perdida.
+      if (chance(0.25)) {
+        const parcial = Math.round(factura.monto_centavos * (0.15 + uniforme() * 0.25))
+        nuevoCobro(factura, sumarDias(factura.fecha_vencimiento, entero(5, 60)), parcial)
+      }
+      continue
+    }
+
+    // --- Sigue abierta?
+    //     Ventana de gestion de cobranza: una factura con menos de tres meses
+    //     de vencida todavia se esta reclamando, y que siga abierta es normal.
+    //     Pasado ese punto la probabilidad de seguir abierta DECAE rapido: una
+    //     factura de hace ocho meses o se cobro tarde o se dio por perdida, no
+    //     se queda colgada para siempre inflando el aging, el DSO y el ECL.
+    const enCicloNormal = diasVencida <= 95
+    const decaimiento = Math.exp(-Math.max(0, diasVencida - 95) / 40)
+    //     Y depende del tamano: una corporativa tiene tesoreria y paga en fecha
+    //     aunque se atrase unos dias; la mora se acumula en las cuentas chicas.
+    //     Sin esto, las facturas de las anclas -- 50 veces la mediana -- quedan
+    //     abiertas y se llevan solas el DSO de la cartera.
+    const factorTamanio = { micro: 1.3, pyme: 1.0, corporativa: 0.42 }[perfil.empresa.tamanio]
+    let pSinCobrar = (0.02 + 0.7 * Math.max(0, perfil.factorMora - 0.8)) * decaimiento * factorTamanio
+    if (enCicloNormal) pSinCobrar += 0.66 * factorTamanio
     pSinCobrar = Math.min(0.93, pSinCobrar)
 
     if (chance(pSinCobrar)) {
-      const candidataAIncobrable = diasVencida > 110 && perfil.factorMora >= 2.2
-      if (candidataAIncobrable && chance(0.42)) {
-        factura.estado = 'incobrable'
-        // A veces entro algo antes de darla por perdida.
-        if (chance(0.25)) {
-          const parcial = Math.round(factura.monto_centavos * (0.15 + uniforme() * 0.25))
-          nuevoCobro(factura, sumarDias(factura.fecha_vencimiento, entero(5, 60)), parcial)
-        }
-        continue
-      }
-
       if (!enCicloNormal && chance(0.22)) {
         const parcial = Math.round(factura.monto_centavos * (0.25 + uniforme() * 0.35))
         const fecha = minFecha(sumarDias(factura.fecha_vencimiento, entero(3, 45)), sumarDias(HOY, -1))
@@ -1106,8 +1151,11 @@ function generarConEscalas(escalas: ReadonlyMap<string, number>): Dataset {
       continue
     }
 
-    // Cobrada. El atraso es proporcional al factorMora de la empresa.
-    const atraso = Math.max(0, Math.round((Math.abs(normal()) * 6 + 1) * perfil.factorMora))
+    // --- Cobrada, con atraso proporcional al factorMora. Si la factura estuvo
+    //     mucho tiempo abierta y termino entrando, entro tarde: no puede
+    //     figurar cobrada a los tres dias del vencimiento.
+    const atrasoBase = Math.max(0, Math.round((Math.abs(normal()) * 6 + 1) * perfil.factorMora))
+    const atraso = enCicloNormal ? atrasoBase : Math.min(diasVencida, atrasoBase + entero(20, 90))
     const primerPago = sumarDias(factura.fecha_vencimiento, atraso)
 
     if (primerPago > HOY) {
