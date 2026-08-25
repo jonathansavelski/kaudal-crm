@@ -169,6 +169,8 @@ export default function Cobranzas() {
                   singular="factura"
                   plural="facturas"
                   hayFiltros={chips.length > 0}
+                  cargando={estado.cargando}
+                  error={estado.error}
                 />
               }
             />

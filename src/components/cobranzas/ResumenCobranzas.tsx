@@ -71,7 +71,7 @@ export function ResumenCobranzas({
         nota={
           datos ? `${formatearPorcentaje(datos.eclSobreSaldo)} del saldo pendiente` : undefined
         }
-        formula="Suma de saldo × probabilidad de default del bucket de aging de cada factura."
+        formula="Suma de saldo × tasa de pérdida esperada del bucket de aging de cada factura: 1% corriente, 2% a 30 días, 8%, 20%, 45% y 100% incobrable."
       />
     </div>
   )

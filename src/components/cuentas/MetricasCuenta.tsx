@@ -30,7 +30,10 @@ export function MetricasCuenta({
   const metricas = ficha?.metricas
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    // Cinco columnas dejaban 137 px utiles por tarjeta en un notebook de 1280 px, y
+    // la facturacion anual de un cliente grande mide casi 190 px. Tres columnas (3 + 2)
+    // dan 267 px y la cifra entra entera en todo el rango 1280-1440.
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <TarjetaKpi
         titulo="Facturación 12 meses"
         icono={Banknote}

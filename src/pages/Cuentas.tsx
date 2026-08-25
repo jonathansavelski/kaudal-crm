@@ -130,6 +130,8 @@ export default function Cuentas() {
                 singular="cuenta"
                 plural="cuentas"
                 hayFiltros={chips.length > 0}
+                cargando={estado.cargando}
+                error={estado.error}
               />
             }
           />

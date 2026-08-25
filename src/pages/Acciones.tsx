@@ -154,6 +154,8 @@ export default function Acciones() {
                     singular="acción"
                     plural="acciones"
                     hayFiltros={chips.length > 0}
+                    cargando={estado.cargando}
+                    error={estado.error}
                   />
                 }
               />

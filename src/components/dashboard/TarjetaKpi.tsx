@@ -38,7 +38,13 @@ export function TarjetaKpi({
   cargando?: boolean
 }) {
   return (
-    <Card className="gap-0 py-5">
+    // `@container`: la cifra se dimensiona contra el ancho de la tarjeta, no del
+    // viewport. En una fila de cuatro KPI a 1280 px la tarjeta queda en 225 px y un
+    // importe de nueve digitos a `text-3xl` mide 190 px contra 185 px utiles: se
+    // desbordaba. Debajo de 240 px baja un escalon en vez de romper la card. El
+    // dashboard, que va a tres columnas, nunca entra en ese rango y conserva
+    // `text-3xl` como pide la rule ui.md §5.
+    <Card className="@container gap-0 py-5">
       <CardContent className="px-5">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -67,7 +73,9 @@ export function TarjetaKpi({
           </div>
         ) : (
           <>
-            <p className="tabular text-3xl leading-tight font-semibold">{principal.valor}</p>
+            <p className="tabular text-2xl leading-tight font-semibold @min-[15rem]:text-3xl">
+              {principal.valor}
+            </p>
             {principal.tipoValor ? (
               <p className="mt-0.5 text-sm text-muted-foreground">{principal.tipoValor}</p>
             ) : null}

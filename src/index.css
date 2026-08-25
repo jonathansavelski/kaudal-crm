@@ -36,7 +36,10 @@
   --destructive-foreground: oklch(0.99 0.003 247.9);
 
   --border: oklch(0.915 0.014 255.5);
-  --input: oklch(0.9 0.016 255.5);
+  /* Mas oscuro que --border a proposito: el borde de un campo de texto es lo unico
+     que identifica al control, asi que necesita 3:1 (ui.md §5 / WCAG 1.4.11). El de una
+     card es decorativo y se queda claro. */
+  --input: oklch(0.66 0.016 255.5);
   --ring: oklch(0.45 0.145 254);
 
   /* Sidebar */
@@ -51,29 +54,31 @@
 
   /* --- Paleta de series para graficos (skill charts-crm) --- */
   --chart-1: oklch(0.55 0.16 254);
-  --chart-2: oklch(0.68 0.14 185);
-  --chart-3: oklch(0.7 0.15 75);
+  --chart-2: oklch(0.63 0.14 185);
+  --chart-3: oklch(0.66 0.15 75);
   --chart-4: oklch(0.6 0.18 320);
   --chart-5: oklch(0.62 0.16 145);
   --chart-6: oklch(0.6 0.19 25);
   --chart-7: oklch(0.55 0.13 295);
-  --chart-8: oklch(0.72 0.11 220);
+  --chart-8: oklch(0.65 0.11 220);
 
   /* --- Semantica financiera (rule dinero.md) ---
      Cada cifra se etiqueta nominal / real / USD MEP. El color acompana
      esa etiqueta, nunca la reemplaza. */
   --nominal: oklch(0.55 0.16 254);
   --real: oklch(0.62 0.16 145);
-  --usd: oklch(0.65 0.14 160);
+  --usd: oklch(0.64 0.14 160);
 
-  --positivo: oklch(0.55 0.15 150);
+  --positivo: oklch(0.545 0.15 150);
   --negativo: oklch(0.55 0.2 25);
   --neutro: oklch(0.55 0.03 257);
 
-  /* --- Buckets de aging (secuencial: cuanto mas vencido, mas caliente) --- */
-  --aging-corriente: oklch(0.68 0.11 200);
-  --aging-1-30: oklch(0.75 0.13 95);
-  --aging-31-60: oklch(0.72 0.16 65);
+  /* --- Buckets de aging (secuencial: cuanto mas vencido, mas caliente) ---
+     La luminosidad esta topeada para que todo trazo llegue a 3:1 contra la card
+     (skill charts-crm §8). El orden lo lleva el tono, no el brillo. */
+  --aging-corriente: oklch(0.64 0.11 200);
+  --aging-1-30: oklch(0.66 0.13 95);
+  --aging-31-60: oklch(0.67 0.16 65);
   --aging-61-90: oklch(0.64 0.18 40);
   --aging-90-mas: oklch(0.53 0.2 25);
   --aging-incobrable: oklch(0.4 0.14 20);
@@ -139,7 +144,25 @@
   --aging-31-60: oklch(0.79 0.15 65);
   --aging-61-90: oklch(0.72 0.17 40);
   --aging-90-mas: oklch(0.64 0.19 25);
-  --aging-incobrable: oklch(0.52 0.15 20);
+  --aging-incobrable: oklch(0.55 0.15 20);
+}
+
+/* ---------------------------------------------------------------------------
+   Breakpoint de notebook
+   El objetivo de la rule ui.md §7 es "notebook 1280-1440", y todas las grillas
+   anchas de la app usan `xl:`. Pero el `xl` de Tailwind es 1280 px de *viewport*,
+   y una ventana de 1280 px deja 1262 px una vez que se descuenta la barra de
+   scroll: un notebook de 1280 nunca llegaba a `xl` y se quedaba con el layout de
+   tablet (el tablero de pipeline caia a dos columnas y dejaba un hueco enorme).
+   Bajarlo a 1200 px hace que el rango que la rule pide entre de verdad.
+
+   Va en `rem` y no en `px` a proposito: Tailwind ordena los bloques `@media` por
+   unidad antes que por valor, asi que un `xl` en px se emite *antes* que `sm`,
+   `md` y `lg`, pierde la cascada y no se aplica nunca. En rem queda ultimo, que
+   es donde tiene que estar. 75rem = 1200 px.
+   --------------------------------------------------------------------------- */
+@theme {
+  --breakpoint-xl: 75rem;
 }
 
 @theme inline {

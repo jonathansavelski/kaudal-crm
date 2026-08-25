@@ -21,9 +21,17 @@ Kaudal es mono-tenant, así que el modelo es simple:
 | `delete` | nadie | — |
 | cualquiera | `anon` | **nada** |
 
-El resto de las tablas (`facturas`, `cobros`, `contratos`, `campanias`, `tipo_cambio`,
-`ipc_mensual`) son de solo lectura desde el front: se cargan por seed o por cache del API
-usando la `service_role`.
+El resto de las tablas (`facturas`, `cobros`, `contratos`, `campanias`, `ipc_mensual`)
+son de solo lectura desde el front: se cargan por seed usando la Secret key.
+
+**Excepción, `tipo_cambio`** (migración `0005`): `authenticated` puede además hacer
+`insert` y `update`, y solo ahí. La consigna pide que cada respuesta exitosa del API se
+cachee, para que el fallback muestre la última cotización conocida y no la foto del
+último seed. El `unique (fecha, casa)` hace el upsert idempotente.
+
+El riesgo que se acepta: un usuario autenticado podría escribir una cotización falsa. En
+un demo mono-tenant con un solo usuario es aceptable. Si esto fuera multi-tenant, el
+cacheo iría en una edge function con la Secret key, no en el cliente.
 
 Cada política se escribe con `to authenticated` explícito. Una política sin `to` aplica
 también a `anon`, que es justo lo que no queremos.

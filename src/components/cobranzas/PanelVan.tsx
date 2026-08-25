@@ -155,7 +155,7 @@ export function PanelVan({
               tipoValor="nominal · ARS"
               nota={
                 datos
-                  ? `${formatearPorcentaje(datos.eclSobreSaldo)} del saldo pendiente. Cada bucket aporta su probabilidad de default.`
+                  ? `${formatearPorcentaje(datos.eclSobreSaldo)} del saldo pendiente. Cada bucket aporta su tasa de pérdida esperada.`
                   : undefined
               }
             />

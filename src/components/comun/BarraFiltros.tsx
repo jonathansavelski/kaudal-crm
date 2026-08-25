@@ -61,14 +61,30 @@ export function ContadorFiltrados({
   singular,
   plural,
   hayFiltros,
+  cargando = false,
+  error = false,
 }: {
   filtradas: number
   total: number
   singular: string
   plural: string
   hayFiltros: boolean
+  /** Mientras carga no hay total: decir "0" seria informar un dato falso. */
+  cargando?: boolean
+  /** Si la consulta fallo tampoco hay total. El cartel de error va abajo, en la tabla. */
+  error?: boolean
 }) {
   const sustantivo = filtradas === 1 ? singular : plural
+
+  if (error) return null
+
+  if (cargando) {
+    return (
+      <p className="text-sm text-muted-foreground" aria-live="polite">
+        Contando {plural}...
+      </p>
+    )
+  }
 
   return (
     <p className="tabular text-sm text-muted-foreground" aria-live="polite">

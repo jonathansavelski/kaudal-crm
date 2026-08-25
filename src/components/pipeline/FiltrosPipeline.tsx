@@ -35,6 +35,8 @@ export function FiltrosPipelineComercial({
   owners,
   cantidad,
   total,
+  cargando,
+  error,
   onCambio,
   onLimpiar,
 }: {
@@ -42,6 +44,8 @@ export function FiltrosPipelineComercial({
   owners: readonly string[]
   cantidad: number
   total: number
+  cargando: boolean
+  error: boolean
   onCambio: (clave: keyof FiltrosPipeline, valor: string) => void
   onLimpiar: () => void
 }) {
@@ -120,6 +124,8 @@ export function FiltrosPipelineComercial({
         singular="oportunidad abierta"
         plural="oportunidades abiertas"
         hayFiltros={chips.length > 0}
+        cargando={cargando}
+        error={error}
       />
     </div>
   )

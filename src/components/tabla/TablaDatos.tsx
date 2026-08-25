@@ -62,7 +62,10 @@ export function TablaDatos<TData extends RowData>({
       {barra ? <div className="border-b px-3 py-3">{barra}</div> : null}
 
       {estado === 'cargando' ? (
-        <div className="px-3 py-2">
+        // Mismo contenedor de scroll que la tabla real: con doce columnas el skeleton
+        // tiene mas ancho intrinseco que la card y, sin esto, se desbordaba por encima
+        // del borde mientras cargaba.
+        <div className="relative min-w-0 overflow-x-auto px-3 py-2">
           <EsqueletoTabla columnas={formaSkeleton} />
         </div>
       ) : null}

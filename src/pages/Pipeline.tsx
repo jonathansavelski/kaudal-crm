@@ -59,6 +59,8 @@ export default function Pipeline() {
           owners={datos?.owners ?? []}
           cantidad={datos?.cantidad ?? 0}
           total={datos?.cantidadSinFiltrar ?? 0}
+          cargando={estado.cargando}
+          error={estado.error}
           onCambio={(clave, valor) => url.fijar(clave, valor)}
           onLimpiar={url.limpiar}
         />
