@@ -13,7 +13,7 @@ import type { ContratoNormalizado, ResumenCanal } from '@/lib/metricas/tipos'
 
 describe('calcularMrr', () => {
   // USD 200 = 20.000 centavos; MEP venta $1.500 = 150.000 centavos -> $300.000
-  const abonoEnDolares = normalizarAArs({ centavos: 20_000, moneda: 'USD' }, 150_000)
+  const abonoEnDolares = normalizarAArs({ centavos: 20_000, moneda: 'USD' }, 150_000) ?? 0
 
   const contratos: readonly ContratoNormalizado[] = [
     { abonoMensualArsCentavos: 50_000_000, estado: 'activo' }, // $500.000

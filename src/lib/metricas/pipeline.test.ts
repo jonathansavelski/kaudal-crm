@@ -144,6 +144,35 @@ describe('calcularCicloDeVenta', () => {
 describe('calcularForecast', () => {
   const hoy = new Date(2026, 7, 25) // 25/08/2026
 
+  it('incluye la oportunidad que cierra hoy, aunque "hoy" venga con hora', () => {
+    // El bug que este test cubre: comparando timestamps crudos, una oportunidad
+    // que cierra hoy a las 00:00 queda afuera de su propia ventana en cuanto
+    // `hoy` trae hora, que es lo que pasa con `new Date()` en produccion.
+    const cierraHoy: readonly OportunidadConCierreEstimado[] = [
+      {
+        montoArsCentavos: 100_000_000,
+        etapa: 'demo', // 0,30 -> 30.000.000
+        fechaCierreEstimada: new Date(2026, 7, 25),
+      },
+    ]
+
+    const hoyConHora = new Date(2026, 7, 25, 14, 30)
+    expect(calcularForecast(cierraHoy, hoyConHora, 3)).toBe(30_000_000)
+    expect(calcularForecast(cierraHoy, hoy, 3)).toBe(30_000_000)
+  })
+
+  it('incluye la que cierra el ultimo dia de la ventana, con hoy con hora', () => {
+    const cierraAlLimite: readonly OportunidadConCierreEstimado[] = [
+      {
+        montoArsCentavos: 200_000_000,
+        etapa: 'propuesta', // 0,50 -> 100.000.000
+        fechaCierreEstimada: new Date(2026, 10, 25), // 25/11/2026 = hoy + 3 meses
+      },
+    ]
+
+    expect(calcularForecast(cierraAlLimite, new Date(2026, 7, 25, 23, 59), 3)).toBe(100_000_000)
+  })
+
   const oportunidades: readonly OportunidadConCierreEstimado[] = [
     {
       montoArsCentavos: 100_000_000,

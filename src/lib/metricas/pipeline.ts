@@ -91,12 +91,15 @@ export function calcularForecast(
   hoy: Date,
   meses: number,
 ): number {
-  const desde = hoy.getTime()
-  const hasta = addMonths(hoy, meses).getTime()
+  // Se compara por dia calendario, no por timestamp. Si `hoy` viniera con hora
+  // (o sea, `new Date()`), una oportunidad que cierra hoy a las 00:00 quedaria
+  // afuera de su propia ventana: la cota inferior se comportaria como excluida.
+  const hasta = addMonths(hoy, meses)
 
   const enVentana = oportunidades.filter((oportunidad) => {
-    const cierre = oportunidad.fechaCierreEstimada.getTime()
-    return cierre >= desde && cierre <= hasta
+    const desdeHoy = differenceInCalendarDays(oportunidad.fechaCierreEstimada, hoy)
+    const hastaLimite = differenceInCalendarDays(hasta, oportunidad.fechaCierreEstimada)
+    return desdeHoy >= 0 && hastaLimite >= 0
   })
 
   return calcularPipelinePonderado(enVentana)

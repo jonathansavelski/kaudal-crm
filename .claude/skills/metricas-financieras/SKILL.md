@@ -54,10 +54,16 @@ cercano, una sola vez, al final.
 export function normalizarAArs(
   importe: Importe,
   mepVentaCentavos: number,
-): number
+): number | null
 ```
 
-Si `importe.moneda === 'ARS'` devuelve `importe.centavos` sin tocar.
+Si `importe.moneda === 'ARS'` devuelve `importe.centavos` sin tocar, sin mirar la
+cotización.
+
+Devuelve `null` si `mepVentaCentavos` no es positivo. **Devolver `0` sería peor que
+fallar:** convertiría en silencio cada contrato y cada factura en dólares a cero, y
+arrastraría hacia abajo el MRR, el pipeline, el aging y el HHI sin que aparezca ningún
+error en pantalla. Es la variante callada de sumar ARS con USD.
 
 **Caso de prueba:** USD 1.000 (100.000 centavos) a MEP venta $1.500 (150.000 centavos)
 → 100.000 × 150.000 / 100 = **150.000.000 centavos** = $1.500.000.
@@ -92,6 +98,12 @@ con IPC 100 → 1.000.000 × 100 / 125 = **$800.000 reales**.
 ```
 usd_centavos = ars_centavos × 100 / mep_venta_centavos
 ```
+
+```ts
+export function aUsdMep(arsCentavos: number, mepVentaCentavos: number): number | null
+```
+
+Devuelve `null` si la cotización no es positiva, por el mismo motivo.
 
 **Caso de prueba:** $1.500.000 (150.000.000 centavos) a MEP venta $1.500
 → 150.000.000 × 100 / 150.000 = **100.000 centavos** = USD 1.000.
@@ -268,6 +280,12 @@ El test asierta `90_753_609` centavos.
 decimales antes de dividir, el resultado da $907.533,25 — dos pesos menos. Es exactamente
 el error que prohíbe la rule `dinero.md`, y una versión anterior de este mismo skill lo
 cometía. La cuenta se hace de una sola pasada, sin truncar los pasos del medio.
+
+> **No sumar el VAN con la pérdida por inflación.** La TNA del plazo fijo es una tasa
+> **nominal**: ya lleva adentro la inflación esperada. Si una pantalla resta el descuento
+> financiero *y además* la pérdida por inflación sobre el mismo saldo, cuenta la inflación
+> dos veces y el número queda mal por abajo. Son dos lecturas alternativas del mismo
+> problema, no dos costos que se acumulen.
 
 ## Pérdida por inflación
 
@@ -533,8 +551,11 @@ export function calcularExposicionCambiaria(
   saldoUsdNormalizadoCentavos: number,
 ): number | null
 
-export function calcularCaidaPorSaltoMep(saltoMep: number): number
+export function calcularCaidaPorSaltoMep(saltoMep: number): number | null
 ```
+
+Devuelve `null` si `saltoMep <= -1` (una caída del 100% o más del MEP haría explotar la
+división).
 
 **Caso de prueba:** cartera de $8.000.000 en ARS y USD equivalente a $2.000.000
 → exposición = 8.000.000 / 10.000.000 = **0,80** (80%).

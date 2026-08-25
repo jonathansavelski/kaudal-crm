@@ -18,8 +18,14 @@ import type { Importe } from '@/lib/metricas/tipos'
  * El `/ 100` sale de que la cotizacion tambien viene expresada en centavos.
  * Si el importe ya esta en ARS se devuelve tal cual, sin tocar.
  */
-export function normalizarAArs(importe: Importe, mepVentaCentavos: number): number {
+export function normalizarAArs(importe: Importe, mepVentaCentavos: number): number | null {
   if (importe.moneda === 'ARS') return importe.centavos
+
+  // Sin cotizacion no hay conversion posible, y devolver 0 seria peor que fallar:
+  // un MEP faltante convertiria en silencio cada contrato y cada factura en USD a
+  // cero, arrastrando hacia abajo el MRR, el pipeline, el aging y el HHI sin que
+  // aparezca ningun error. Es la variante callada de sumar ARS con USD.
+  if (mepVentaCentavos <= 0) return null
 
   // Unico redondeo, al final: el resultado son centavos y los centavos son enteros.
   return Math.round((importe.centavos * mepVentaCentavos) / 100)

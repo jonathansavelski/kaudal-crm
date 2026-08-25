@@ -64,7 +64,17 @@ describe('aUsdMep', () => {
 
   it('es la vuelta de normalizarAArs', () => {
     const enArs = normalizarAArs({ centavos: 100_000, moneda: 'USD' }, 150_000)
-    expect(aUsdMep(enArs, 150_000)).toBe(100_000)
+    expect(enArs).toBe(150_000_000)
+    expect(aUsdMep(enArs ?? 0, 150_000)).toBe(100_000)
+  })
+
+  it('sin cotizacion devuelve null, no 0', () => {
+    // Devolver 0 seria peor que fallar: convertiria en silencio cada importe en
+    // USD a cero y arrastraria el MRR, el pipeline y el HHI hacia abajo sin error.
+    expect(normalizarAArs({ centavos: 20_000, moneda: 'USD' }, 0)).toBeNull()
+    expect(normalizarAArs({ centavos: 20_000, moneda: 'USD' }, -1)).toBeNull()
+    // Un importe que ya esta en ARS no necesita cotizacion.
+    expect(normalizarAArs({ centavos: 20_000, moneda: 'ARS' }, 0)).toBe(20_000)
   })
 
   it('devuelve null si la cotizacion no es positiva, en vez de Infinity', () => {

@@ -158,8 +158,10 @@ describe('calcularVanCartera', () => {
     // 1. TEA    = (1 + 0,40/12)^12 - 1        ~ 0,4821265
     // 2. factor = (1,4821265)^(90/365)        ~ 1,1018846
     // 3. VAN    = 1.000.000 / 1,1018846       ~ $907.536,09
-    // El skill dice ~$907.534 porque redondea TEA y factor a 6 decimales en el medio;
-    // por eso este caso va con tolerancia y no con igualdad exacta.
+    // El calculo se hace de una sola pasada, sin truncar los pasos del medio: si se
+    // redondean TEA y factor a 6 decimales antes de dividir da $907.533,25, dos pesos
+    // menos. Es el error que prohibe dinero.md, y una version anterior del skill lo
+    // cometia justo en este caso de prueba.
     const facturas: readonly FacturaConSaldo[] = [
       factura({
         saldoCentavos: 100_000_000,
@@ -169,8 +171,7 @@ describe('calcularVanCartera', () => {
 
     const van = calcularVanCartera(facturas, 0.4, HOY)
 
-    expect(van).toBeCloseTo(90_753_609, 0)
-    expect(van / 100).toBeCloseTo(907_534, -1) // dentro de $5 del numero del skill
+    expect(van).toBe(90_753_609)
   })
 
   it('el VAN siempre es menor que el nominal cuando falta cobrar', () => {
