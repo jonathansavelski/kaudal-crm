@@ -10,6 +10,25 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Vendors separados: el bundle de la app se invalida sin arrastrar a React ni a
+        // Supabase, y ningun chunk queda por encima del limite que avisa Vite.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react',
+              // Los ids que ve rolldown vienen siempre con barra normal, tambien en Windows.
+              test: /node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//,
+            },
+            { name: 'supabase', test: /node_modules\/@supabase\// },
+            { name: 'datos', test: /node_modules\/(@tanstack|date-fns)\// },
+          ],
+        },
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

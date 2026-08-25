@@ -1,69 +1,57 @@
-import { Waves, CircleCheck } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { ProveedorSesion } from '@/components/auth/ProveedorSesion'
+import { RutaProtegida } from '@/components/auth/RutaProtegida'
+import { LayoutPrincipal } from '@/components/layout/LayoutPrincipal'
+import Acciones from '@/pages/Acciones'
+import Cobranzas from '@/pages/Cobranzas'
+import Cuentas from '@/pages/Cuentas'
+import Dashboard from '@/pages/Dashboard'
+import Login from '@/pages/Login'
+import Mercado from '@/pages/Mercado'
+import NoEncontrada from '@/pages/NoEncontrada'
+import Pipeline from '@/pages/Pipeline'
 
 /**
- * Placeholder de la Fase 0. La Fase 3 lo reemplaza por el shell real
- * (router, auth de Supabase, sidebar, topbar y footer global).
+ * Raiz de la app: cliente de TanStack Query, router y proveedor de sesion.
+ *
+ * `ProveedorSesion` va adentro del `QueryClientProvider` porque al cerrar sesion limpia
+ * la cache; y adentro del router porque el guard navega.
  */
 
-const HARNESS: ReadonlyArray<{ titulo: string; items: readonly string[] }> = [
-  { titulo: 'Rules', items: ['dinero.md', 'stack.md', 'supabase.md', 'ui.md'] },
-  {
-    titulo: 'Skills',
-    items: ['metricas-financieras', 'seed-financiero', 'charts-crm'],
+const clienteQuery = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Datos financieros que no cambian dentro de una sesion de uso: un minuto alcanza.
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
   },
-  {
-    titulo: 'Agentes',
-    items: ['arquitecto-datos', 'analista-financiero', 'frontend-crm', 'qa-datos'],
-  },
-]
+})
 
 export default function App() {
   return (
-    <main className="mx-auto flex min-h-svh max-w-3xl flex-col justify-center gap-8 px-6 py-16">
-      <header className="flex items-center gap-4">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Waves className="size-6" aria-hidden />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Kaudal CRM</h1>
-          <p className="text-sm text-muted-foreground">
-            CRM comercial de Nodus. Valor nominal, real y USD MEP.
-          </p>
-        </div>
-      </header>
+    <QueryClientProvider client={clienteQuery}>
+      <BrowserRouter>
+        <ProveedorSesion>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CircleCheck className="size-4 text-positivo" aria-hidden />
-            Fase 0 — scaffolding y harness
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-3">
-          {HARNESS.map((grupo) => (
-            <section key={grupo.titulo} className="space-y-2">
-              <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {grupo.titulo}
-              </h2>
-              <ul className="space-y-1.5">
-                {grupo.items.map((item) => (
-                  <li key={item}>
-                    <Badge variant="secondary" className="font-mono text-xs font-normal">
-                      {item}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </CardContent>
-      </Card>
-
-      <p className="text-sm text-muted-foreground">
-        Proximo paso: Fase 1 — esquema, migraciones y seed.
-      </p>
-    </main>
+            <Route element={<RutaProtegida />}>
+              <Route element={<LayoutPrincipal />}>
+                <Route index element={<Dashboard />} />
+                <Route path="pipeline" element={<Pipeline />} />
+                <Route path="cuentas" element={<Cuentas />} />
+                <Route path="cobranzas" element={<Cobranzas />} />
+                <Route path="acciones" element={<Acciones />} />
+                <Route path="mercado" element={<Mercado />} />
+                <Route path="*" element={<NoEncontrada />} />
+              </Route>
+            </Route>
+          </Routes>
+        </ProveedorSesion>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
