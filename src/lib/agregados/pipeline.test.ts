@@ -159,6 +159,32 @@ describe('armarPipeline', () => {
     expect(porMonto.cantidad).toBe(1)
   })
 
+  it('la suma de las columnas ponderadas cierra exacto con el total', () => {
+    // El ponderado de cada columna se redondea por separado, asi que la suma de las
+    // cinco puede desviarse del total en unos centavos. La pantalla muestra las dos
+    // cosas y alguien puede sumar las columnas a mano: tiene que dar identico.
+    // Montos elegidos para que los productos caigan en centavos fraccionarios.
+    const conFraccion: FilaOportunidad[] = [
+      oportunidad({ id: 'o-a', etapa: 'prospecto', monto_centavos: 333_333 }), //  x 0,05 =  16.666,65
+      oportunidad({ id: 'o-b', etapa: 'calificado', monto_centavos: 777_777 }), // x 0,15 = 116.666,55
+      oportunidad({ id: 'o-c', etapa: 'demo', monto_centavos: 111_111 }), //       x 0,30 =  33.333,30
+      oportunidad({ id: 'o-d', etapa: 'propuesta', monto_centavos: 555_555 }), //  x 0,50 = 277.777,50
+      oportunidad({ id: 'o-e', etapa: 'negociacion', monto_centavos: 999_999 }), //x 0,75 = 749.999,25
+    ]
+
+    const datos = armarPipeline(
+      { oportunidades: conFraccion, empresas: EMPRESAS },
+      CONTEXTO,
+      FILTROS_PIPELINE_VACIOS,
+      HOY,
+    )
+
+    const suma = datos.columnas.reduce((total, columna) => total + columna.totalPonderadoCentavos, 0)
+    expect(suma).toBe(datos.totalPonderadoCentavos)
+    // 16.666,65 + 116.666,55 + 33.333,30 + 277.777,50 + 749.999,25 = 1.194.443,25 -> 1.194.443
+    expect(datos.totalPonderadoCentavos).toBe(1_194_443)
+  })
+
   it('sin oportunidades abiertas devuelve columnas en cero, no columnas ausentes', () => {
     const datos = armarPipeline(
       { oportunidades: [], empresas: EMPRESAS },

@@ -164,6 +164,8 @@ export function armarPipeline(
     fechaCierreEstimada: new Date(oportunidad.fechaCierreEstimada + 'T00:00:00'),
   }))
 
+  const totalPonderadoCentavos = calcularPipelinePonderado(paraMetricas)
+
   const columnas: ColumnaEtapa[] = ETAPAS_ABIERTAS.map((etapa) => {
     const enEtapa = filtradas
       .filter((oportunidad) => oportunidad.etapa === etapa)
@@ -180,10 +182,21 @@ export function armarPipeline(
     }
   })
 
+  // El ponderado de cada columna se redondea por separado, asi que la suma de las cinco
+  // puede diferir del total en unos centavos. La pantalla muestra las dos cosas y alguien
+  // puede sumar las columnas a mano: el reparto tiene que cerrar exacto. `dinero.md` §4
+  // manda asignar el residuo al ultimo elemento, sin perder ni inventar un centavo.
+  const residuo =
+    totalPonderadoCentavos - columnas.reduce((suma, columna) => suma + columna.totalPonderadoCentavos, 0)
+  const ultima = columnas.at(-1)
+  if (ultima && residuo !== 0) {
+    ultima.totalPonderadoCentavos += residuo
+  }
+
   return {
     columnas,
     totalCentavos: columnas.reduce((suma, columna) => suma + columna.totalCentavos, 0),
-    totalPonderadoCentavos: calcularPipelinePonderado(paraMetricas),
+    totalPonderadoCentavos,
     cantidad: filtradas.length,
     cantidadSinFiltrar: abiertas.length,
     forecast3Centavos: calcularForecast(paraMetricas, hoy, 3),
