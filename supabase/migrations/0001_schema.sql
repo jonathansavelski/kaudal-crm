@@ -562,8 +562,18 @@ $fn$;
 
 comment on function public.fn_validar_totales_cobrados() is 'Verifica, por sentencia, que ninguna factura tocada haya quedado sobrecobrada. Cubre el caso de las inserciones en lote del seed.';
 
+-- Un trigger por evento, no "insert or update": Postgres no admite transition
+-- tables en un trigger declarado para mas de un evento. Los dos llaman a la
+-- misma funcion.
 drop trigger if exists trg_validar_totales_cobrados on public.cobros;
-create trigger trg_validar_totales_cobrados
-  after insert or update on public.cobros
+drop trigger if exists trg_validar_totales_cobrados_insert on public.cobros;
+create trigger trg_validar_totales_cobrados_insert
+  after insert on public.cobros
+  referencing new table as nuevas
+  for each statement execute function public.fn_validar_totales_cobrados();
+
+drop trigger if exists trg_validar_totales_cobrados_update on public.cobros;
+create trigger trg_validar_totales_cobrados_update
+  after update on public.cobros
   referencing new table as nuevas
   for each statement execute function public.fn_validar_totales_cobrados();

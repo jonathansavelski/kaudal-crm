@@ -15,7 +15,8 @@
     "macro": "tsx scripts/bajar-macro.ts",
     "seed": "tsx scripts/seed.ts",
     "seed:dry": "tsx scripts/seed.ts --dry-run",
-    "seed:reset": "tsx scripts/seed.ts --reset"
+    "seed:reset": "tsx scripts/seed.ts --reset",
+    "tipos": "tsx scripts/generar-tipos.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
