@@ -1,0 +1,3 @@
+# SPA: toda ruta profunda la resuelve el router del cliente.
+# Sin esto, un F5 en /cuentas/:id da 404 en Netlify.
+/*  /index.html  200

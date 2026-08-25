@@ -79,7 +79,7 @@ export function deflactar(
   nominalCentavos: number,
   ipcOrigen: number,
   ipcBase: number,
-): number
+): number | null
 ```
 
 Devuelve `null` si `ipcOrigen` es 0 o negativo.
@@ -258,11 +258,16 @@ export function calcularVanCartera(
 
 **Caso de prueba:** una sola factura de $1.000.000 a cobrar en 90 días, TNA 40%.
 
-1. TEA = (1 + 0,40/12)^12 − 1 = (1,033333)^12 − 1 ≈ **0,482126**
-2. Factor = (1,482126)^(90/365) ≈ **1,101888**
-3. VAN = 1.000.000 / 1,101888 ≈ **$907.534**
+1. TEA = (1 + 0,40/12)^12 − 1 = 0,482126490…
+2. Factor = (1,482126490…)^(90/365) = 1,101884550…
+3. VAN = 1.000.000 / 1,101884550… = **$907.536,09**
 
-Por ser irracional, este test usa tolerancia (`toBeCloseTo`), no igualdad exacta.
+El test asierta `90_753_609` centavos.
+
+**Ojo con este caso, que es una trampa:** si se redondean la TEA y el factor a seis
+decimales antes de dividir, el resultado da $907.533,25 — dos pesos menos. Es exactamente
+el error que prohíbe la rule `dinero.md`, y una versión anterior de este mismo skill lo
+cometía. La cuenta se hace de una sola pasada, sin truncar los pasos del medio.
 
 ## Pérdida por inflación
 
@@ -329,6 +334,46 @@ Devuelve `null` si `MRR_inicial` es cero.
 **Caso de prueba:** inicial $1.000.000, expansión $200.000, contracción $50.000,
 churn $100.000 → (1.000.000 + 200.000 − 50.000 − 100.000) / 1.000.000 = 1.050.000 /
 1.000.000 = **1,05** (105%).
+
+### NRR nominal y NRR real
+
+En Argentina los abonos en pesos se indexan por inflación. Eso significa que **el NRR
+nominal cuenta la indexación como expansión**, y da un número inflado que no refleja
+ninguna decisión comercial: el cliente no compró más, solo pagó la actualización.
+
+Por eso se calculan y se muestran **los dos**:
+
+| Métrica | Sobre qué se calcula |
+|---|---|
+| **NRR nominal** | MRR en pesos corrientes |
+| **NRR real** | MRR deflactado a pesos del mes inicial del período |
+
+```
+NRR_real = (MRR_inicial + expansion_real − contraccion_real − churn_real) / MRR_inicial
+```
+
+donde cada componente se deflacta con `deflactar()` a pesos del mes inicial antes de
+entrar a la cuenta.
+
+La misma función sirve para los dos: recibe los componentes ya deflactados o no, según
+lo que se quiera medir.
+
+Clave para no equivocarse: **`MRR_inicial` está en el mes cero, así que no se deflacta.**
+Lo que se deflacta son expansión, contracción y churn, que ocurrieron después. Si se
+deflactaran los cuatro por el mismo factor, el cociente no cambiaría y la métrica no
+diría nada.
+
+**Caso de prueba:** MRR inicial $1.000.000, expansión $450.000, sin contracción ni churn,
+con el IPC pasando de 100 a 150 en el período.
+
+- Nominal = (1.000.000 + 450.000) / 1.000.000 = **1,45**
+- Real = (1.000.000 + 450.000/1,5) / 1.000.000 = 1.300.000 / 1.000.000 = **1,30**
+
+**La brecha entre ambos es el efecto inflación**, y mostrarla es justamente el punto de
+Kaudal: 45% de crecimiento aparente son 30% reales, y los otros 15 puntos son la
+actualización de precios, no una decisión comercial de ningún cliente.
+
+Vale lo mismo para el crecimiento del MRR: la serie a 24 meses se muestra nominal y real.
 
 ## Churn mensual
 
@@ -428,7 +473,7 @@ Devuelve `null` si la facturación total es cero.
 ECL = Σ (exposicion_i × PD_bucket_i)
 ```
 
-Probabilidad de default por bucket de aging:
+Tasa de pérdida esperada por bucket de aging:
 
 | Bucket | PD |
 |---|---:|
@@ -440,6 +485,13 @@ Probabilidad de default por bucket de aging:
 | `incobrable` | 1,00 |
 
 `exposicion_i` es el **saldo pendiente**, no el monto original de la factura.
+
+**Precisión de vocabulario.** El modelo completo de Basilea es
+`ECL = EAD × PD × LGD`. Acá el coeficiente se aplica sobre la exposición entera, o sea
+que asume **LGD = 100%**: de la factura que no se cobra, no se recupera nada. Por eso lo
+correcto es leer la tabla como **tasa de pérdida**, no como probabilidad de default pura.
+La constante se sigue llamando `PD_POR_BUCKET` por convención de la industria, pero el
+popover del KPI en pantalla dice "tasa de pérdida esperada".
 
 ```ts
 export const PD_POR_BUCKET: Readonly<Record<BucketAging, number>>

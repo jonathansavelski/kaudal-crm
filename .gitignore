@@ -33,3 +33,6 @@ coverage
 
 # Netlify
 .netlify
+
+# Scripts scratch de los agentes de verificacion (qa-datos escribe _qa*.ts en la raiz)
+/_*.ts
