@@ -24,6 +24,12 @@ export default defineConfig({
             },
             { name: 'supabase', test: /node_modules\/@supabase\// },
             { name: 'datos', test: /node_modules\/(@tanstack|date-fns)\// },
+            {
+              // Recharts y su cadena de d3 son el bloque mas pesado del bundle y solo
+              // los usan el dashboard y /mercado: van a su propio chunk.
+              name: 'graficos',
+              test: /node_modules\/(recharts|victory-vendor|d3-[a-z]+|internmap|decimal\.js-light|fast-equals|eventemitter3|es-toolkit)\//,
+            },
           ],
         },
       },
